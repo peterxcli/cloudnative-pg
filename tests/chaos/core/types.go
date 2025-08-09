@@ -58,6 +58,8 @@ const (
 	ChaosActionNetworkPartition ChaosAction = "network-partition"
 	// ChaosActionIODelay introduces storage I/O delays
 	ChaosActionIODelay ChaosAction = "io-delay"
+	// ChaosActionIOError introduces storage I/O errors
+	ChaosActionIOError ChaosAction = "io-error"
 	// ChaosActionCPUStress creates CPU pressure
 	ChaosActionCPUStress ChaosAction = "cpu-stress"
 	// ChaosActionMemoryStress creates memory pressure
