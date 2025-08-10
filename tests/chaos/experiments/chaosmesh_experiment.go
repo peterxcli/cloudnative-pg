@@ -47,17 +47,17 @@ func NewChaosMeshExperiment(
 	metricsCollector core.MetricsCollector,
 ) *ChaosMeshExperiment {
 	baseExp := core.NewBaseExperiment(config, client)
-	
+
 	// Add safety checks
 	for _, check := range safetyChecks {
 		baseExp.AddSafetyCheck(check)
 	}
-	
+
 	// Add metrics collector
 	if metricsCollector != nil {
 		baseExp.AddMetricsCollector(metricsCollector)
 	}
-	
+
 	return &ChaosMeshExperiment{
 		BaseExperiment:   baseExp,
 		adapter:          chaosmesh.NewAdapter(client, config.Target.Namespace),
@@ -77,15 +77,15 @@ func (e *ChaosMeshExperiment) Run(ctx context.Context) error {
 
 	// Pre-experiment safety checks
 	if err := e.RunSafetyChecks(ctx); err != nil {
-		e.AddEvent("ExperimentAborted", 
-			fmt.Sprintf("Pre-experiment safety check failed: %v", err), 
+		e.AddEvent("ExperimentAborted",
+			fmt.Sprintf("Pre-experiment safety check failed: %v", err),
 			core.EventSeverityError)
 		return fmt.Errorf("pre-experiment safety check failed: %w", err)
 	}
 
 	// Record experiment start
-	e.AddEvent("ExperimentStarted", 
-		fmt.Sprintf("Chaos experiment started: %s", e.Config.Name), 
+	e.AddEvent("ExperimentStarted",
+		fmt.Sprintf("Chaos experiment started: %s", e.Config.Name),
 		core.EventSeverityInfo)
 
 	// Inject chaos based on action type
@@ -102,8 +102,8 @@ func (e *ChaosMeshExperiment) Run(ctx context.Context) error {
 	}
 
 	if err != nil {
-		e.AddEvent("ExperimentFailed", 
-			fmt.Sprintf("Failed to inject chaos: %v", err), 
+		e.AddEvent("ExperimentFailed",
+			fmt.Sprintf("Failed to inject chaos: %v", err),
 			core.EventSeverityError)
 		return err
 	}
@@ -131,15 +131,15 @@ func (e *ChaosMeshExperiment) Run(ctx context.Context) error {
 
 	// Post-experiment validation
 	if err := e.RunSafetyChecks(ctx); err != nil {
-		e.AddEvent("ExperimentFailed", 
-			fmt.Sprintf("Post-experiment safety check failed: %v", err), 
+		e.AddEvent("ExperimentFailed",
+			fmt.Sprintf("Post-experiment safety check failed: %v", err),
 			core.EventSeverityError)
 		return fmt.Errorf("post-experiment safety check failed: %w", err)
 	}
 
 	// Record experiment completion
-	e.AddEvent("ExperimentCompleted", 
-		fmt.Sprintf("Chaos experiment completed successfully, duration: %v", e.Config.Duration), 
+	e.AddEvent("ExperimentCompleted",
+		fmt.Sprintf("Chaos experiment completed successfully, duration: %v", e.Config.Duration),
 		core.EventSeverityInfo)
 
 	return nil
@@ -273,8 +273,8 @@ func (e *ChaosMeshExperiment) monitorDuringChaos(ctx context.Context) {
 				// Get chaos status
 				status, err := e.adapter.GetChaosStatus(ctx, e.chaosKind, e.chaosName)
 				if err != nil {
-					e.AddEvent("StatusCheckError", 
-						fmt.Sprintf("Failed to get chaos status: %v", err), 
+					e.AddEvent("StatusCheckError",
+						fmt.Sprintf("Failed to get chaos status: %v", err),
 						core.EventSeverityWarning)
 					continue
 				}
@@ -282,16 +282,16 @@ func (e *ChaosMeshExperiment) monitorDuringChaos(ctx context.Context) {
 				// Check safety during execution
 				if err := e.RunSafetyChecks(ctx); err != nil {
 					// Safety check failed, abort experiment
-					e.AddEvent("ExperimentAborted", 
-						fmt.Sprintf("Safety check failed during chaos: %v", err), 
+					e.AddEvent("ExperimentAborted",
+						fmt.Sprintf("Safety check failed during chaos: %v", err),
 						core.EventSeverityCritical)
 					_ = e.Cleanup(ctx)
 					return
 				}
 
 				// Record status
-				e.AddEvent("StatusUpdate", 
-					fmt.Sprintf("Chaos status: %s", status), 
+				e.AddEvent("StatusUpdate",
+					fmt.Sprintf("Chaos status: %s", status),
 					core.EventSeverityInfo)
 			}
 		}

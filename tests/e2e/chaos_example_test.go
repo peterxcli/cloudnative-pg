@@ -53,14 +53,14 @@ var _ = Describe("Chaos Testing Example", Label(tests.LabelSelfHealing), func() 
 	Context("Chaos experiment integration", func() {
 		It("demonstrates chaos testing with safety controls", func() {
 			Skip("This is an example test showing chaos integration patterns")
-			
+
 			// Standard namespace creation
 			const namespacePrefix = "chaos-example"
 			var err error
 			namespace, err = env.CreateUniqueTestNamespace(env.Ctx, env.Client, namespacePrefix)
 			Expect(err).ToNot(HaveOccurred())
 			// Note: In production tests, namespace cleanup is typically handled by the test framework
-			
+
 			// 1. Create cluster using standard E2E patterns
 			By("creating a PostgreSQL cluster", func() {
 				AssertCreateCluster(namespace, clusterName, sampleFile, env)
@@ -70,7 +70,7 @@ var _ = Describe("Chaos Testing Example", Label(tests.LabelSelfHealing), func() 
 			By("waiting for cluster to be ready", func() {
 				cluster, err := clusterutils.Get(env.Ctx, env.Client, namespace, clusterName)
 				Expect(err).NotTo(HaveOccurred())
-				
+
 				// Wait for healthy status
 				Eventually(func() bool {
 					cluster, err = clusterutils.Get(env.Ctx, env.Client, namespace, clusterName)

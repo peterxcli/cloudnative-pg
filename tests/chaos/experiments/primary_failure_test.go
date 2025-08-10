@@ -58,7 +58,7 @@ var _ = Describe("Chaos: Primary Failure", Label(LabelChaos), func() {
 		ctx = context.Background()
 		namespace = "chaos-test"
 		clusterName = "test-cluster"
-		
+
 		// Note: In actual integration, env would be initialized from suite_test.go
 		// env = GetTestingEnvironment()
 	})
@@ -66,14 +66,14 @@ var _ = Describe("Chaos: Primary Failure", Label(LabelChaos), func() {
 	Context("when primary pod is killed", func() {
 		It("should promote a standby within acceptable time", func() {
 			Skip("Skipping integration test - requires full test environment")
-			
+
 			// This is how the test would work with a real environment:
-			
+
 			// 1. Get initial cluster state
 			cluster, err := clusterutils.Get(ctx, env.Client, namespace, clusterName)
 			Expect(err).NotTo(HaveOccurred())
 			initialPrimary := cluster.Status.CurrentPrimary
-			
+
 			// 2. Set up chaos experiment
 			config := core.ExperimentConfig{
 				Name:        "primary-kill-test",
@@ -88,7 +88,7 @@ var _ = Describe("Chaos: Primary Failure", Label(LabelChaos), func() {
 				Action:   core.ChaosActionPodKill,
 				Duration: 30 * time.Second,
 			}
-			
+
 			// 3. Set up safety controller
 			safetyConfig := safety.SafetyConfig{
 				MaxFailurePercent:   50,
@@ -99,16 +99,16 @@ var _ = Describe("Chaos: Primary Failure", Label(LabelChaos), func() {
 				ClusterNamespace:    namespace,
 				ClusterName:         clusterName,
 			}
-			
+
 			safetyController := safety.NewController(env.Client, safetyConfig)
 			err = safetyController.Start(ctx)
 			Expect(err).NotTo(HaveOccurred())
 			defer safetyController.Stop()
-			
+
 			// 4. Set up metrics collection
 			metricsCollector := metrics.NewClusterMetricsCollector(
 				env.Client, namespace, clusterName)
-			
+
 			// 5. Create and configure experiment
 			experiment := NewPodChaosExperiment(config, env.Client)
 			experiment.AddMetricsCollector(metricsCollector)
@@ -117,14 +117,14 @@ var _ = Describe("Chaos: Primary Failure", Label(LabelChaos), func() {
 				ClusterName:        clusterName,
 				MinHealthyReplicas: 2,
 			})
-			
+
 			// 6. Run experiment
 			err = experiment.Setup(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			
+
 			err = experiment.Run(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			
+
 			// 7. Wait for recovery
 			Eventually(func() bool {
 				cluster, err = clusterutils.Get(ctx, env.Client, namespace, clusterName)
@@ -136,20 +136,20 @@ var _ = Describe("Chaos: Primary Failure", Label(LabelChaos), func() {
 					cluster.Status.CurrentPrimary == cluster.Status.TargetPrimary
 			}, 2*time.Minute, 5*time.Second).Should(BeTrue(),
 				"Cluster should recover with new primary")
-			
+
 			// 8. Cleanup
 			err = experiment.Cleanup(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			
+
 			// 9. Validate results
 			result := experiment.GetResult()
 			Expect(result.Status).To(Equal(core.ExperimentStatusCompleted))
 			Expect(result.SafetyAborted).To(BeFalse())
-			
+
 			// Check metrics
 			resilience, ok := result.Metrics["cluster-test-cluster.resilience"]
 			Expect(ok).To(BeTrue())
-			
+
 			resilienceMetrics := resilience.(*metrics.ResilienceMetrics)
 			Expect(resilienceMetrics.TimeToRecovery).To(BeNumerically("<", 2*time.Minute))
 			Expect(resilienceMetrics.DataLossBytes).To(Equal(int64(0)))
@@ -157,7 +157,7 @@ var _ = Describe("Chaos: Primary Failure", Label(LabelChaos), func() {
 
 		It("should abort if cluster becomes unhealthy", func() {
 			Skip("Skipping integration test - requires full test environment")
-			
+
 			// Similar structure but with a scenario that triggers safety abort
 		})
 	})
@@ -165,7 +165,7 @@ var _ = Describe("Chaos: Primary Failure", Label(LabelChaos), func() {
 	Context("when multiple pods fail simultaneously", func() {
 		It("should maintain minimum replicas", func() {
 			Skip("Skipping integration test - requires full test environment")
-			
+
 			// Test with multiple pod failures
 		})
 	})
@@ -180,12 +180,12 @@ var _ = Describe("Chaos: Pod Selection", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		
+
 		// Create fake client with test pods
 		scheme := runtime.NewScheme()
 		_ = corev1.AddToScheme(scheme)
 		_ = apiv1.AddToScheme(scheme)
-		
+
 		pods := []runtime.Object{
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
@@ -227,7 +227,7 @@ var _ = Describe("Chaos: Pod Selection", func() {
 				},
 			},
 		}
-		
+
 		fakeClient = fake.NewClientBuilder().
 			WithScheme(scheme).
 			WithRuntimeObjects(pods...).
@@ -247,10 +247,10 @@ var _ = Describe("Chaos: Pod Selection", func() {
 			Duration: 30 * time.Second,
 			Action:   core.ChaosActionPodKill,
 		}
-		
+
 		experiment := NewPodChaosExperiment(config, fakeClient)
 		err := experiment.selectTargetPods(ctx)
-		
+
 		Expect(err).NotTo(HaveOccurred())
 		Expect(experiment.targetPods).To(HaveLen(1))
 		Expect(experiment.targetPods[0].Name).To(Equal("test-cluster-1"))
@@ -266,10 +266,10 @@ var _ = Describe("Chaos: Pod Selection", func() {
 			Duration: 30 * time.Second,
 			Action:   core.ChaosActionPodKill,
 		}
-		
+
 		experiment := NewPodChaosExperiment(config, fakeClient)
 		err := experiment.selectTargetPods(ctx)
-		
+
 		Expect(err).NotTo(HaveOccurred())
 		Expect(experiment.targetPods).To(HaveLen(1))
 		Expect(experiment.targetPods[0].Name).To(Equal("test-cluster-2"))
@@ -288,10 +288,10 @@ var _ = Describe("Chaos: Pod Selection", func() {
 			Duration: 30 * time.Second,
 			Action:   core.ChaosActionPodKill,
 		}
-		
+
 		experiment := NewPodChaosExperiment(config, fakeClient)
 		err := experiment.selectTargetPods(ctx)
-		
+
 		Expect(err).NotTo(HaveOccurred())
 		Expect(experiment.targetPods).To(HaveLen(2))
 	})
@@ -309,10 +309,10 @@ var _ = Describe("Chaos: Pod Selection", func() {
 			Duration: 30 * time.Second,
 			Action:   core.ChaosActionPodKill,
 		}
-		
+
 		experiment := NewPodChaosExperiment(config, fakeClient)
 		err := experiment.selectTargetPods(ctx)
-		
+
 		Expect(err).NotTo(HaveOccurred())
 		Expect(experiment.targetPods).To(HaveLen(1))
 	})
@@ -327,10 +327,10 @@ var _ = Describe("Chaos: Pod Selection", func() {
 			Duration: 30 * time.Second,
 			Action:   core.ChaosActionPodKill,
 		}
-		
+
 		experiment := NewPodChaosExperiment(config, fakeClient)
 		err := experiment.selectTargetPods(ctx)
-		
+
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("pod non-existent-pod not found"))
 	})

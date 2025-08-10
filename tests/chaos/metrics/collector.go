@@ -34,14 +34,14 @@ import (
 // ResilienceMetrics tracks key resilience metrics during chaos experiments
 type ResilienceMetrics struct {
 	// Recovery Metrics
-	TimeToDetection time.Duration `json:"ttd"`     // Time to detect failure
-	TimeToRecovery  time.Duration `json:"ttr"`     // Time to full recovery
+	TimeToDetection time.Duration `json:"ttd"`      // Time to detect failure
+	TimeToRecovery  time.Duration `json:"ttr"`      // Time to full recovery
 	DataLossBytes   int64         `json:"dataLoss"` // Amount of data lost
 
 	// Availability Metrics
-	DowntimeDuration time.Duration `json:"downtime"`        // Total downtime
-	FailedRequests   int64         `json:"failedRequests"`  // Number of failed requests
-	SuccessRate      float64       `json:"successRate"`     // Percentage of successful requests
+	DowntimeDuration time.Duration `json:"downtime"`       // Total downtime
+	FailedRequests   int64         `json:"failedRequests"` // Number of failed requests
+	SuccessRate      float64       `json:"successRate"`    // Percentage of successful requests
 
 	// Performance Impact
 	LatencyP50 time.Duration `json:"p50Latency"` // 50th percentile latency
@@ -56,16 +56,16 @@ type ResilienceMetrics struct {
 
 // ClusterMetricsCollector collects metrics from a CloudNativePG cluster
 type ClusterMetricsCollector struct {
-	client      client.Client
-	namespace   string
-	clusterName string
-	metrics     *ResilienceMetrics
-	samples     []MetricSample
-	mu          sync.RWMutex
-	stopCh      chan struct{}
-	ticker      *time.Ticker
-	startTime   time.Time
-	failureTime *time.Time
+	client       client.Client
+	namespace    string
+	clusterName  string
+	metrics      *ResilienceMetrics
+	samples      []MetricSample
+	mu           sync.RWMutex
+	stopCh       chan struct{}
+	ticker       *time.Ticker
+	startTime    time.Time
+	failureTime  *time.Time
 	recoveryTime *time.Time
 }
 
@@ -149,7 +149,7 @@ func (c *ClusterMetricsCollector) Collect() (map[string]interface{}, error) {
 func (c *ClusterMetricsCollector) Reset() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.metrics = &ResilienceMetrics{}
 	c.samples = []MetricSample{}
 	c.failureTime = nil
@@ -210,7 +210,7 @@ func (c *ClusterMetricsCollector) collectMetrics(ctx context.Context) {
 func (c *ClusterMetricsCollector) collectSample(ctx context.Context) (*MetricSample, error) {
 	cluster := &apiv1.Cluster{}
 	key := client.ObjectKey{Namespace: c.namespace, Name: c.clusterName}
-	
+
 	if err := c.client.Get(ctx, key, cluster); err != nil {
 		return nil, err
 	}
@@ -375,7 +375,7 @@ func (c *BaseMetricsCollector) Stop() error {
 func (c *BaseMetricsCollector) Collect() (map[string]interface{}, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	result := make(map[string]interface{})
 	for k, v := range c.metrics {
 		result[k] = v

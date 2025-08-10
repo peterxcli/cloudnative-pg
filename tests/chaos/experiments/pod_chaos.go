@@ -68,7 +68,7 @@ func (e *PodChaosExperiment) Setup(ctx context.Context) error {
 	}
 
 	e.AddEvent("Setup", fmt.Sprintf("Found %d target pods", len(e.targetPods)), core.EventSeverityInfo)
-	
+
 	// Store original state for recovery
 	for _, pod := range e.targetPods {
 		e.originalState[pod.Name] = map[string]interface{}{
@@ -187,30 +187,30 @@ func (e *PodChaosExperiment) applyTargetLimits(pods []corev1.Pod) []corev1.Pod {
 func (e *PodChaosExperiment) runPodKill(ctx context.Context) error {
 	for _, pod := range e.targetPods {
 		e.AddEvent("PodKill", fmt.Sprintf("Deleting pod %s", pod.Name), core.EventSeverityInfo)
-		
+
 		// Record as affected
 		e.affectedPods = append(e.affectedPods, pod)
-		
+
 		// Delete the pod
 		deletePolicy := metav1.DeletePropagationForeground
 		deleteOpts := client.DeleteOptions{
 			PropagationPolicy: &deletePolicy,
 		}
-		
+
 		if err := e.Client.Delete(ctx, &pod, &deleteOpts); err != nil {
 			e.AddEvent("PodKill", fmt.Sprintf("Failed to delete pod %s: %v", pod.Name, err), core.EventSeverityError)
 			return fmt.Errorf("failed to delete pod %s: %w", pod.Name, err)
 		}
-		
+
 		e.AddEvent("PodKill", fmt.Sprintf("Successfully deleted pod %s", pod.Name), core.EventSeverityInfo)
-		
+
 		// Record deletion time in metrics
 		e.Result.Metrics[fmt.Sprintf("pod.%s.deletionTime", pod.Name)] = time.Now().Unix()
 	}
 
 	// Wait for the specified duration
 	e.AddEvent("Duration", fmt.Sprintf("Waiting for %v", e.Config.Duration), core.EventSeverityInfo)
-	
+
 	select {
 	case <-time.After(e.Config.Duration):
 		e.AddEvent("Duration", "Chaos duration completed", core.EventSeverityInfo)
@@ -226,10 +226,10 @@ func (e *PodChaosExperiment) runPodKill(ctx context.Context) error {
 func (e *PodChaosExperiment) runPodFailure(ctx context.Context) error {
 	for _, pod := range e.targetPods {
 		e.AddEvent("PodFailure", fmt.Sprintf("Injecting failure into pod %s", pod.Name), core.EventSeverityInfo)
-		
+
 		// Record as affected
 		e.affectedPods = append(e.affectedPods, pod)
-		
+
 		// Execute failure injection command in the pod
 		failureCmd := e.getFailureCommand()
 		if err := e.executePodCommand(ctx, &pod, failureCmd); err != nil {
@@ -255,14 +255,14 @@ func (e *PodChaosExperiment) runPodFailure(ctx context.Context) error {
 func (e *PodChaosExperiment) getFailureCommand() []string {
 	// Default to a simple exit command
 	cmd := []string{"sh", "-c", "exit 1"}
-	
+
 	// Check for custom command in parameters
 	if cmdParam, ok := e.Config.Parameters["command"]; ok {
 		if cmdStr, ok := cmdParam.(string); ok {
 			cmd = []string{"sh", "-c", cmdStr}
 		}
 	}
-	
+
 	return cmd
 }
 
@@ -289,13 +289,13 @@ func (e *PodChaosExperiment) waitForPodRecovery(ctx context.Context, namespace, 
 		case <-ticker.C:
 			pod := &corev1.Pod{}
 			key := client.ObjectKey{Namespace: namespace, Name: name}
-			
+
 			// Check if pod exists and is ready
 			if err := e.Client.Get(ctx, key, pod); err != nil {
 				// Pod might be recreating
 				continue
 			}
-			
+
 			if isPodReady(pod) {
 				// Record recovery time
 				e.Result.Metrics[fmt.Sprintf("pod.%s.recoveryTime", name)] = time.Now().Unix()
@@ -310,12 +310,12 @@ func isPodReady(pod *corev1.Pod) bool {
 	if pod.Status.Phase != corev1.PodRunning {
 		return false
 	}
-	
+
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == corev1.PodReady {
 			return condition.Status == corev1.ConditionTrue
 		}
 	}
-	
+
 	return false
 }

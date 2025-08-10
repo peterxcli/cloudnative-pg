@@ -44,10 +44,10 @@ import (
 
 var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing), func() {
 	const (
-		level           = tests.High
-		clusterName     = "chaos-primary-failure"
-		sampleFile      = fixturesDir + "/base/cluster-storage-class.yaml.template"
-		tableName       = "chaos_test"
+		level       = tests.High
+		clusterName = "chaos-primary-failure"
+		sampleFile  = fixturesDir + "/base/cluster-storage-class.yaml.template"
+		tableName   = "chaos_test"
 	)
 
 	var namespace string
@@ -77,7 +77,7 @@ var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing
 				Expect(err).NotTo(HaveOccurred())
 				initialPrimary = cluster.Status.CurrentPrimary
 				Expect(initialPrimary).NotTo(BeEmpty())
-				
+
 				initialPrimaryPod, err = podutils.Get(env.Ctx, env.Client, namespace, initialPrimary)
 				Expect(err).NotTo(HaveOccurred())
 			})
@@ -93,7 +93,7 @@ var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing
 					SELECT 'test_' || i 
 					FROM generate_series(1, 1000) i;
 				`, tableName, tableName)
-				
+
 				_, _, err := exec.EventuallyExecQueryInInstancePod(
 					env.Ctx, env.Client, env.Interface, env.RestClientConfig,
 					exec.PodLocator{
@@ -189,12 +189,12 @@ var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing
 					if err != nil {
 						return false
 					}
-					
+
 					// Check if failover occurred
 					if cluster.Status.CurrentPrimary != initialPrimary &&
 						cluster.Status.CurrentPrimary != "" {
 						newPrimary = cluster.Status.CurrentPrimary
-						GinkgoWriter.Printf("Failover detected: %s -> %s\n", 
+						GinkgoWriter.Printf("Failover detected: %s -> %s\n",
 							initialPrimary, newPrimary)
 						return true
 					}
@@ -209,7 +209,7 @@ var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing
 					if err != nil {
 						return false
 					}
-					
+
 					return cluster.Status.Phase == apiv1.PhaseHealthy &&
 						cluster.Status.CurrentPrimary == cluster.Status.TargetPrimary &&
 						cluster.Status.ReadyInstances == 3
@@ -262,16 +262,16 @@ var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing
 			By("verifying old primary pod is recreated", func() {
 				Eventually(func() bool {
 					pod := &corev1.Pod{}
-					err := env.Client.Get(env.Ctx, 
+					err := env.Client.Get(env.Ctx,
 						types.NamespacedName{
 							Namespace: namespace,
 							Name:      initialPrimary,
 						}, pod)
-					
+
 					if err != nil {
 						return false
 					}
-					
+
 					// Check if it's a new pod (different UID)
 					return pod.UID != initialPrimaryPod.UID &&
 						pod.Status.Phase == corev1.PodRunning
@@ -284,7 +284,7 @@ var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing
 				query := fmt.Sprintf(
 					"INSERT INTO %s (data) VALUES ('post_failover_test')",
 					tableName)
-				
+
 				_, _, err := exec.EventuallyExecQueryInInstancePod(
 					env.Ctx, env.Client, env.Interface, env.RestClientConfig,
 					exec.PodLocator{
@@ -311,7 +311,7 @@ var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing
 						query := fmt.Sprintf(
 							"SELECT COUNT(*) FROM %s WHERE data = 'post_failover_test'",
 							tableName)
-						
+
 						out, _, err := exec.QueryInInstancePod(
 							env.Ctx, env.Client, env.Interface, env.RestClientConfig,
 							exec.PodLocator{
@@ -321,11 +321,11 @@ var _ = Describe("Chaos Testing - Primary Failure", Label(tests.LabelSelfHealing
 							postgres.PostgresDBName,
 							query,
 						)
-						
+
 						if err != nil {
 							return false
 						}
-						
+
 						count := strings.TrimSpace(out)
 						return count == "1"
 					}, 30*time.Second, 2*time.Second).Should(BeTrue(),

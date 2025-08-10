@@ -50,23 +50,23 @@ func TestController_RegisterCheck(t *testing.T) {
 		ClusterNamespace:   "test-ns",
 		ClusterName:        "test-cluster",
 	}
-	
+
 	client := createFakeClient()
 	controller := NewController(client, config)
-	
+
 	// Initially no custom checks
 	assert.Len(t, controller.checks, 0)
-	
+
 	// Register a check
 	mockCheck := &ClusterHealthCheck{
 		Namespace:          "test-ns",
 		ClusterName:        "test-cluster",
 		MinHealthyReplicas: 2,
 	}
-	
+
 	controller.RegisterCheck(mockCheck)
 	assert.Len(t, controller.checks, 1)
-	
+
 	// Register another check
 	controller.RegisterCheck(mockCheck)
 	assert.Len(t, controller.checks, 2)
@@ -78,41 +78,41 @@ func TestController_EmergencyStop(t *testing.T) {
 		ClusterNamespace:    "test-ns",
 		ClusterName:         "test-cluster",
 	}
-	
+
 	client := createFakeClient()
 	controller := NewController(client, config)
-	
+
 	// Clean up any existing file
 	defer os.Remove(controller.emergencyStopFile)
-	
+
 	t.Run("trigger emergency stop", func(t *testing.T) {
 		err := controller.TriggerEmergencyStop("test reason")
 		require.NoError(t, err)
-		
+
 		// Verify file exists
 		_, err = os.Stat(controller.emergencyStopFile)
 		assert.NoError(t, err)
-		
+
 		// Verify content
 		content, err := os.ReadFile(controller.emergencyStopFile)
 		require.NoError(t, err)
 		assert.Contains(t, string(content), "test reason")
 		assert.Contains(t, string(content), "Emergency stop triggered")
 	})
-	
+
 	t.Run("clear emergency stop", func(t *testing.T) {
 		err := controller.ClearEmergencyStop()
 		require.NoError(t, err)
-		
+
 		// Verify file is removed
 		_, err = os.Stat(controller.emergencyStopFile)
 		assert.True(t, os.IsNotExist(err))
 	})
-	
+
 	t.Run("emergency stop disabled", func(t *testing.T) {
 		config.EnableEmergencyStop = false
 		controller = NewController(client, config)
-		
+
 		err := controller.TriggerEmergencyStop("test")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "not enabled")
@@ -121,50 +121,50 @@ func TestController_EmergencyStop(t *testing.T) {
 
 func TestController_ShouldAbort(t *testing.T) {
 	ctx := context.Background()
-	
+
 	t.Run("emergency stop file triggers abort", func(t *testing.T) {
 		config := SafetyConfig{
 			EnableEmergencyStop: true,
 			ClusterNamespace:    "test-ns",
 			ClusterName:         "test-cluster",
 		}
-		
+
 		client := createFakeClient()
 		controller := NewController(client, config)
-		
+
 		// Create emergency stop file
 		err := controller.TriggerEmergencyStop("test")
 		require.NoError(t, err)
 		defer controller.ClearEmergencyStop()
-		
+
 		shouldAbort, reason := controller.ShouldAbort(ctx)
 		assert.True(t, shouldAbort)
 		assert.Equal(t, "emergency stop file detected", reason)
 	})
-	
+
 	t.Run("abort signal triggers abort", func(t *testing.T) {
 		config := SafetyConfig{
 			ClusterNamespace: "test-ns",
 			ClusterName:      "test-cluster",
 		}
-		
+
 		client := createFakeClient()
 		controller := NewController(client, config)
-		
+
 		// Close abort signal
 		close(controller.abortSignal)
-		
+
 		shouldAbort, reason := controller.ShouldAbort(ctx)
 		assert.True(t, shouldAbort)
 		assert.Equal(t, "abort signal received", reason)
 	})
-	
+
 	t.Run("critical check failure triggers abort", func(t *testing.T) {
 		config := SafetyConfig{
 			ClusterNamespace: "test-ns",
 			ClusterName:      "test-cluster",
 		}
-		
+
 		// Create unhealthy cluster (no primary)
 		cluster := &apiv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -176,10 +176,10 @@ func TestController_ShouldAbort(t *testing.T) {
 				CurrentPrimary: "", // No primary
 			},
 		}
-		
+
 		client := createFakeClient(cluster)
 		controller := NewController(client, config)
-		
+
 		// Register critical check
 		check := &ClusterHealthCheck{
 			Namespace:          "test-ns",
@@ -187,31 +187,31 @@ func TestController_ShouldAbort(t *testing.T) {
 			MinHealthyReplicas: 2,
 		}
 		controller.RegisterCheck(check)
-		
+
 		shouldAbort, reason := controller.ShouldAbort(ctx)
 		assert.True(t, shouldAbort)
 		assert.Contains(t, reason, "critical check")
 		assert.Contains(t, reason, "ClusterHealth")
 	})
-	
+
 	t.Run("non-critical check failure does not trigger abort", func(t *testing.T) {
 		config := SafetyConfig{
 			ClusterNamespace: "test-ns",
 			ClusterName:      "test-cluster",
 		}
-		
+
 		client := createFakeClient()
 		controller := NewController(client, config)
-		
+
 		// Register non-critical check that fails
 		check := &RecoveryTimeCheck{
 			maxRecoveryTime: 1 * time.Nanosecond, // Will exceed immediately
 		}
 		check.StartRecovery()
 		time.Sleep(10 * time.Millisecond)
-		
+
 		controller.RegisterCheck(check)
-		
+
 		shouldAbort, reason := controller.ShouldAbort(ctx)
 		assert.False(t, shouldAbort)
 		assert.Empty(t, reason)
@@ -220,7 +220,7 @@ func TestController_ShouldAbort(t *testing.T) {
 
 func TestClusterHealthCheck(t *testing.T) {
 	ctx := context.Background()
-	
+
 	t.Run("healthy cluster passes check", func(t *testing.T) {
 		cluster := &apiv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -234,20 +234,20 @@ func TestClusterHealthCheck(t *testing.T) {
 				TargetPrimary:  "test-cluster-1",
 			},
 		}
-		
+
 		client := createFakeClient(cluster)
 		check := &ClusterHealthCheck{
 			Namespace:          "test-ns",
 			ClusterName:        "test-cluster",
 			MinHealthyReplicas: 2,
 		}
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.True(t, passed)
 		assert.Empty(t, reason)
 	})
-	
+
 	t.Run("no primary fails check", func(t *testing.T) {
 		cluster := &apiv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -259,20 +259,20 @@ func TestClusterHealthCheck(t *testing.T) {
 				CurrentPrimary: "", // No primary
 			},
 		}
-		
+
 		client := createFakeClient(cluster)
 		check := &ClusterHealthCheck{
 			Namespace:          "test-ns",
 			ClusterName:        "test-cluster",
 			MinHealthyReplicas: 2,
 		}
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.False(t, passed)
 		assert.Contains(t, reason, "no primary instance available")
 	})
-	
+
 	t.Run("insufficient replicas fails check", func(t *testing.T) {
 		cluster := &apiv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -285,20 +285,20 @@ func TestClusterHealthCheck(t *testing.T) {
 				TargetPrimary:  "test-cluster-1",
 			},
 		}
-		
+
 		client := createFakeClient(cluster)
 		check := &ClusterHealthCheck{
 			Namespace:          "test-ns",
 			ClusterName:        "test-cluster",
 			MinHealthyReplicas: 3,
 		}
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.False(t, passed)
 		assert.Contains(t, reason, "only 1 ready instances, need 3")
 	})
-	
+
 	t.Run("switchover in progress fails check", func(t *testing.T) {
 		cluster := &apiv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -311,20 +311,20 @@ func TestClusterHealthCheck(t *testing.T) {
 				TargetPrimary:  "test-cluster-2", // Different from current
 			},
 		}
-		
+
 		client := createFakeClient(cluster)
 		check := &ClusterHealthCheck{
 			Namespace:          "test-ns",
 			ClusterName:        "test-cluster",
 			MinHealthyReplicas: 2,
 		}
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.False(t, passed)
 		assert.Contains(t, reason, "primary switchover in progress")
 	})
-	
+
 	t.Run("cluster not found returns error", func(t *testing.T) {
 		client := createFakeClient() // No cluster
 		check := &ClusterHealthCheck{
@@ -332,13 +332,13 @@ func TestClusterHealthCheck(t *testing.T) {
 			ClusterName:        "missing-cluster",
 			MinHealthyReplicas: 2,
 		}
-		
+
 		passed, _, err := check.Check(ctx, client)
 		assert.Error(t, err)
 		assert.False(t, passed)
 		assert.Contains(t, err.Error(), "failed to get cluster")
 	})
-	
+
 	t.Run("check is critical", func(t *testing.T) {
 		check := &ClusterHealthCheck{}
 		assert.True(t, check.IsCritical())
@@ -347,7 +347,7 @@ func TestClusterHealthCheck(t *testing.T) {
 
 func TestDataConsistencyCheck(t *testing.T) {
 	ctx := context.Background()
-	
+
 	t.Run("sufficient replicas pass check", func(t *testing.T) {
 		cluster := &apiv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -360,20 +360,20 @@ func TestDataConsistencyCheck(t *testing.T) {
 				TargetPrimary:  "test-cluster-1",
 			},
 		}
-		
+
 		client := createFakeClient(cluster)
 		check := &DataConsistencyCheck{
 			Namespace:       "test-ns",
 			ClusterName:     "test-cluster",
 			MaxDataLagBytes: 1000000,
 		}
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.True(t, passed)
 		assert.Empty(t, reason)
 	})
-	
+
 	t.Run("insufficient replicas fails check", func(t *testing.T) {
 		cluster := &apiv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -386,20 +386,20 @@ func TestDataConsistencyCheck(t *testing.T) {
 				TargetPrimary:  "test-cluster-1",
 			},
 		}
-		
+
 		client := createFakeClient(cluster)
 		check := &DataConsistencyCheck{
 			Namespace:       "test-ns",
 			ClusterName:     "test-cluster",
 			MaxDataLagBytes: 1000000,
 		}
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.False(t, passed)
 		assert.Contains(t, reason, "insufficient replicas for data consistency")
 	})
-	
+
 	t.Run("primary transition fails check", func(t *testing.T) {
 		cluster := &apiv1.Cluster{
 			ObjectMeta: metav1.ObjectMeta{
@@ -412,20 +412,20 @@ func TestDataConsistencyCheck(t *testing.T) {
 				TargetPrimary:  "test-cluster-2", // Different from current
 			},
 		}
-		
+
 		client := createFakeClient(cluster)
 		check := &DataConsistencyCheck{
 			Namespace:       "test-ns",
 			ClusterName:     "test-cluster",
 			MaxDataLagBytes: 1000000,
 		}
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.False(t, passed)
 		assert.Contains(t, reason, "primary transition in progress")
 	})
-	
+
 	t.Run("check is critical", func(t *testing.T) {
 		check := &DataConsistencyCheck{}
 		assert.True(t, check.IsCritical())
@@ -435,44 +435,44 @@ func TestDataConsistencyCheck(t *testing.T) {
 func TestRecoveryTimeCheck(t *testing.T) {
 	ctx := context.Background()
 	client := createFakeClient()
-	
+
 	t.Run("within recovery time passes", func(t *testing.T) {
 		check := &RecoveryTimeCheck{
 			maxRecoveryTime: 1 * time.Hour,
 		}
 		check.StartRecovery()
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.True(t, passed)
 		assert.Empty(t, reason)
 	})
-	
+
 	t.Run("exceeds recovery time fails", func(t *testing.T) {
 		check := &RecoveryTimeCheck{
 			maxRecoveryTime: 1 * time.Nanosecond,
 		}
 		check.StartRecovery()
 		time.Sleep(10 * time.Millisecond)
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.False(t, passed)
 		assert.Contains(t, reason, "recovery time exceeded")
 	})
-	
+
 	t.Run("no recovery started passes", func(t *testing.T) {
 		check := &RecoveryTimeCheck{
 			maxRecoveryTime: 1 * time.Hour,
 		}
 		// Don't call StartRecovery()
-		
+
 		passed, reason, err := check.Check(ctx, client)
 		assert.NoError(t, err)
 		assert.True(t, passed)
 		assert.Empty(t, reason)
 	})
-	
+
 	t.Run("check is not critical", func(t *testing.T) {
 		check := &RecoveryTimeCheck{}
 		assert.False(t, check.IsCritical())
@@ -482,14 +482,14 @@ func TestRecoveryTimeCheck(t *testing.T) {
 func TestController_Start(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	config := SafetyConfig{
 		MaxFailurePercent:  50,
 		MinHealthyReplicas: 2,
 		ClusterNamespace:   "test-ns",
 		ClusterName:        "test-cluster",
 	}
-	
+
 	// Create healthy cluster
 	cluster := &apiv1.Cluster{
 		ObjectMeta: metav1.ObjectMeta{
@@ -502,22 +502,22 @@ func TestController_Start(t *testing.T) {
 			TargetPrimary:  "test-cluster-1",
 		},
 	}
-	
+
 	client := createFakeClient(cluster)
 	controller := NewController(client, config)
-	
+
 	err := controller.Start(ctx)
 	require.NoError(t, err)
-	
+
 	// Verify default checks are registered
 	assert.True(t, len(controller.checks) >= 3, "Expected at least 3 default checks")
-	
+
 	// Let it run briefly
 	time.Sleep(50 * time.Millisecond)
-	
+
 	// Stop controller
 	controller.Stop()
-	
+
 	// Verify abort signal is closed
 	select {
 	case <-controller.abortSignal:
@@ -557,23 +557,110 @@ func TestController_RegisterDefaultChecks(t *testing.T) {
 		ClusterNamespace:   "test-ns",
 		ClusterName:        "test-cluster",
 	}
-	
+
 	client := createFakeClient()
 	controller := NewController(client, config)
-	
+
 	// Register default checks
 	controller.registerDefaultChecks()
-	
+
 	// Verify correct number of default checks
 	assert.Len(t, controller.checks, 3)
-	
+
 	// Verify check types
 	checkTypes := make(map[string]bool)
 	for _, check := range controller.checks {
 		checkTypes[check.Name()] = true
 	}
-	
+
 	assert.True(t, checkTypes["ClusterHealth"])
 	assert.True(t, checkTypes["DataConsistency"])
 	assert.True(t, checkTypes["RecoveryTime"])
+}
+
+func TestController_RecoveryDetection(t *testing.T) {
+	config := SafetyConfig{
+		MaxFailurePercent:  50,
+		MinHealthyReplicas: 2,
+		MaxRecoveryTime:    5 * time.Minute,
+		ClusterNamespace:   "test-ns",
+		ClusterName:        "test-cluster",
+	}
+
+	client := createFakeClient()
+	controller := NewController(client, config)
+
+	// Start the controller to register default checks
+	err := controller.Start(context.Background())
+	require.NoError(t, err)
+
+	// Initially recovery should not be started
+	assert.Nil(t, controller.recoveryTimeCheck.recoveryStart)
+
+	// Test manual recovery trigger
+	controller.TriggerRecovery("manual test")
+	assert.NotNil(t, controller.recoveryTimeCheck.recoveryStart)
+
+	// Test manual recovery reset
+	controller.ResetRecovery("manual reset")
+	assert.Nil(t, controller.recoveryTimeCheck.recoveryStart)
+}
+
+func TestController_RecoveryScenarioDetection(t *testing.T) {
+	config := SafetyConfig{
+		MaxFailurePercent:  50,
+		MinHealthyReplicas: 2,
+		MaxRecoveryTime:    5 * time.Minute,
+		ClusterNamespace:   "test-ns",
+		ClusterName:        "test-cluster",
+	}
+
+	client := createFakeClient()
+	controller := NewController(client, config)
+
+	// Start the controller to register default checks
+	err := controller.Start(context.Background())
+	require.NoError(t, err)
+
+	// Test recovery scenario detection
+	healthyCluster := &apiv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test-ns",
+			Name:      "test-cluster",
+		},
+		Status: apiv1.ClusterStatus{
+			ReadyInstances: 3,
+			CurrentPrimary: "pod-1",
+			TargetPrimary:  "pod-1",
+		},
+	}
+
+	recoveringCluster := &apiv1.Cluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test-ns",
+			Name:      "test-cluster",
+		},
+		Status: apiv1.ClusterStatus{
+			ReadyInstances: 1,
+			CurrentPrimary: "pod-1",
+			TargetPrimary:  "pod-2", // Switchover in progress
+		},
+	}
+
+	// Add healthy cluster to client
+	client = createFakeClient(healthyCluster)
+	controller.client = client
+
+	// First detection should just store state
+	controller.detectRecoveryScenarios(context.Background())
+	assert.Nil(t, controller.recoveryTimeCheck.recoveryStart)
+	assert.NotNil(t, controller.lastClusterState)
+
+	// Update client with recovering cluster
+	client = createFakeClient(recoveringCluster)
+	controller.client = client
+
+	// Second detection should trigger recovery
+	controller.detectRecoveryScenarios(context.Background())
+	assert.NotNil(t, controller.recoveryTimeCheck.recoveryStart)
 }

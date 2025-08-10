@@ -39,10 +39,10 @@ import (
 
 var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive), func() {
 	const (
-		clusterName       = "chaos-test-cluster"
-		sampleFile        = fixturesDir + "/base/cluster-storage-class.yaml.template"
-		namespacePrefix   = "chaos-mesh-test"
-		level             = tests.High
+		clusterName     = "chaos-test-cluster"
+		sampleFile      = fixturesDir + "/base/cluster-storage-class.yaml.template"
+		namespacePrefix = "chaos-mesh-test"
+		level           = tests.High
 	)
 
 	var (
@@ -59,7 +59,7 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 		// Create a unique namespace for this test
 		namespace, err = env.CreateUniqueTestNamespace(env.Ctx, env.Client, namespacePrefix)
 		Expect(err).ToNot(HaveOccurred())
-		
+
 		DeferCleanup(func() error {
 			if CurrentSpecReport().Failed() {
 				namespaces.DumpNamespaceObjects(env.Ctx, env.Client, namespace, "out/"+namespace)
@@ -118,15 +118,15 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 			By("verifying cluster health after failover")
 			Eventually(func() bool {
 				cluster := &cnpgv1.Cluster{}
-				err := env.Client.Get(context.Background(), 
-					types.NamespacedName{Namespace: namespace, Name: clusterName}, 
+				err := env.Client.Get(context.Background(),
+					types.NamespacedName{Namespace: namespace, Name: clusterName},
 					cluster)
 				if err != nil {
 					return false
 				}
 				// Check if cluster has healthy instances
-				return cluster.Status.Instances > 0 && 
-					   cluster.Status.ReadyInstances == cluster.Status.Instances
+				return cluster.Status.Instances > 0 &&
+					cluster.Status.ReadyInstances == cluster.Status.Instances
 			}, 180*time.Second, 10*time.Second).Should(BeTrue())
 
 			By("verifying new primary is functional")
@@ -182,8 +182,8 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 
 			By("verifying cluster detects the issue")
 			cluster := &cnpgv1.Cluster{}
-			err = env.Client.Get(context.Background(), 
-				types.NamespacedName{Namespace: namespace, Name: clusterName}, 
+			err = env.Client.Get(context.Background(),
+				types.NamespacedName{Namespace: namespace, Name: clusterName},
 				cluster)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -193,8 +193,8 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 			By("verifying cluster recovers after partition heals")
 			Eventually(func() bool {
 				cluster := &cnpgv1.Cluster{}
-				err := env.Client.Get(context.Background(), 
-					types.NamespacedName{Namespace: namespace, Name: clusterName}, 
+				err := env.Client.Get(context.Background(),
+					types.NamespacedName{Namespace: namespace, Name: clusterName},
 					cluster)
 				if err != nil {
 					return false
@@ -248,11 +248,11 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 
 			By("verifying cluster remains operational despite I/O delays")
 			cluster := &cnpgv1.Cluster{}
-			err = env.Client.Get(context.Background(), 
-				types.NamespacedName{Namespace: namespace, Name: clusterName}, 
+			err = env.Client.Get(context.Background(),
+				types.NamespacedName{Namespace: namespace, Name: clusterName},
 				cluster)
 			Expect(err).ToNot(HaveOccurred())
-			
+
 			// The cluster should remain operational but may show degraded performance
 			Expect(cluster.Status.Instances).To(BeNumerically(">", 0))
 
@@ -262,8 +262,8 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 			By("verifying cluster recovers after I/O chaos ends")
 			Eventually(func() bool {
 				cluster := &cnpgv1.Cluster{}
-				err := env.Client.Get(context.Background(), 
-					types.NamespacedName{Namespace: namespace, Name: clusterName}, 
+				err := env.Client.Get(context.Background(),
+					types.NamespacedName{Namespace: namespace, Name: clusterName},
 					cluster)
 				if err != nil {
 					return false
@@ -311,8 +311,8 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 			By("waiting for affected replicas to recover")
 			Eventually(func() bool {
 				cluster := &cnpgv1.Cluster{}
-				err := env.Client.Get(context.Background(), 
-					types.NamespacedName{Namespace: namespace, Name: clusterName}, 
+				err := env.Client.Get(context.Background(),
+					types.NamespacedName{Namespace: namespace, Name: clusterName},
 					cluster)
 				if err != nil {
 					return false
@@ -324,8 +324,8 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 			By("verifying cluster eventually returns to full health")
 			Eventually(func() bool {
 				cluster := &cnpgv1.Cluster{}
-				err := env.Client.Get(context.Background(), 
-					types.NamespacedName{Namespace: namespace, Name: clusterName}, 
+				err := env.Client.Get(context.Background(),
+					types.NamespacedName{Namespace: namespace, Name: clusterName},
 					cluster)
 				if err != nil {
 					return false
@@ -342,7 +342,7 @@ var _ = Describe("Chaos Mesh PostgreSQL Failover", Label(tests.LabelDisruptive),
 func WaitForChaosExperimentReady(adapter *chaosmesh.Adapter, kind, name string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	
+
 	return adapter.WaitForChaosReady(ctx, kind, name, timeout)
 }
 
@@ -355,26 +355,26 @@ func ValidateClusterHealthDuringChaos(
 ) error {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	
+
 	endTime := time.Now().Add(duration)
-	
+
 	for time.Now().Before(endTime) {
 		select {
 		case <-ticker.C:
 			cluster := &cnpgv1.Cluster{}
-			err := client.Get(context.Background(), 
-				types.NamespacedName{Namespace: namespace, Name: clusterName}, 
+			err := client.Get(context.Background(),
+				types.NamespacedName{Namespace: namespace, Name: clusterName},
 				cluster)
 			if err != nil {
 				return fmt.Errorf("failed to get cluster: %w", err)
 			}
-			
+
 			if cluster.Status.ReadyInstances < int(minHealthyInstances) {
 				return fmt.Errorf("cluster health degraded below threshold: %d < %d",
 					cluster.Status.ReadyInstances, minHealthyInstances)
 			}
 		}
 	}
-	
+
 	return nil
 }

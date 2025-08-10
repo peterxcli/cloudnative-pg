@@ -111,23 +111,23 @@ func TestInjectPodChaos(t *testing.T) {
 			// Create fake client with scheme
 			scheme := runtime.NewScheme()
 			_ = corev1.AddToScheme(scheme)
-			
+
 			client := fake.NewClientBuilder().
 				WithScheme(scheme).
 				Build()
 
 			adapter := NewAdapter(client, "test-namespace")
-			
+
 			// Mock the create operation
 			podChaos, err := adapter.InjectPodChaos(ctx, tt.config)
-			
+
 			require.NoError(t, err)
 			assert.NotNil(t, podChaos)
 			assert.Equal(t, tt.config.Name, podChaos.Name)
 			assert.Equal(t, "test-namespace", podChaos.Namespace)
 			assert.Equal(t, tt.expectedAction, podChaos.Spec.Action)
 			assert.Equal(t, tt.expectedMode, podChaos.Spec.Mode)
-			
+
 			if tt.expectedValue != "" {
 				assert.Equal(t, tt.expectedValue, podChaos.Spec.Value)
 			}
@@ -139,7 +139,7 @@ func TestInjectNetworkChaos(t *testing.T) {
 	ctx := context.Background()
 	scheme := runtime.NewScheme()
 	_ = corev1.AddToScheme(scheme)
-	
+
 	client := fake.NewClientBuilder().
 		WithScheme(scheme).
 		Build()
@@ -166,7 +166,7 @@ func TestInjectNetworkChaos(t *testing.T) {
 	}
 
 	networkChaos, err := adapter.InjectNetworkChaos(ctx, config)
-	
+
 	require.NoError(t, err)
 	assert.NotNil(t, networkChaos)
 	assert.Equal(t, config.Name, networkChaos.Name)
@@ -181,7 +181,7 @@ func TestInjectIOChaos(t *testing.T) {
 	ctx := context.Background()
 	scheme := runtime.NewScheme()
 	_ = corev1.AddToScheme(scheme)
-	
+
 	client := fake.NewClientBuilder().
 		WithScheme(scheme).
 		Build()
@@ -203,7 +203,7 @@ func TestInjectIOChaos(t *testing.T) {
 	}
 
 	ioChaos, err := adapter.InjectIOChaos(ctx, config)
-	
+
 	require.NoError(t, err)
 	assert.NotNil(t, ioChaos)
 	assert.Equal(t, config.Name, ioChaos.Name)
@@ -246,7 +246,7 @@ func TestDeleteChaos(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := fake.NewClientBuilder().WithScheme(scheme)
-			
+
 			if tt.existingChaos {
 				// Create an unstructured object to simulate existing chaos
 				u := &unstructured.Unstructured{}
@@ -259,18 +259,18 @@ func TestDeleteChaos(t *testing.T) {
 				u.SetNamespace("test-namespace")
 				builder = builder.WithObjects(u)
 			}
-			
+
 			client := builder.Build()
 			adapter := NewAdapter(client, "test-namespace")
-			
+
 			err := adapter.DeleteChaos(ctx, tt.kind, tt.resourceName)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			
+
 			// Verify the resource is deleted
 			if tt.existingChaos {
 				u := &unstructured.Unstructured{}
@@ -339,7 +339,7 @@ func TestGetChaosStatus(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			builder := fake.NewClientBuilder().WithScheme(scheme)
-			
+
 			if tt.chaosExists {
 				// Create an unstructured object with status
 				u := &unstructured.Unstructured{}
@@ -350,19 +350,19 @@ func TestGetChaosStatus(t *testing.T) {
 				})
 				u.SetName(tt.chaosName)
 				u.SetNamespace("test-namespace")
-				
+
 				if tt.chaosPhase != "" {
 					_ = unstructured.SetNestedField(u.Object, tt.chaosPhase, "status", "phase")
 				}
-				
+
 				builder = builder.WithObjects(u)
 			}
-			
+
 			client := builder.Build()
 			adapter := NewAdapter(client, "test-namespace")
-			
+
 			status, err := adapter.GetChaosStatus(ctx, "PodChaos", tt.chaosName)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
@@ -556,7 +556,7 @@ func TestGetDuration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			duration, err := GetDuration(tt.input)
-			
+
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {

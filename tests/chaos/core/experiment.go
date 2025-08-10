@@ -172,7 +172,7 @@ func (e *BaseExperiment) StopMetricsCollection() {
 		if err := collector.Stop(); err != nil {
 			e.AddEvent("Metrics", fmt.Sprintf("Failed to stop collector %s: %v", collector.Name(), err), EventSeverityWarning)
 		}
-		
+
 		metrics, err := collector.Collect()
 		if err != nil {
 			e.AddEvent("Metrics", fmt.Sprintf("Failed to collect metrics from %s: %v", collector.Name(), err), EventSeverityWarning)
@@ -192,19 +192,19 @@ func (e *BaseExperiment) Setup(ctx context.Context) error {
 	e.SetStatus(ExperimentStatusPending)
 	e.Result.StartTime = time.Now()
 	e.AddEvent("Setup", "Starting experiment setup", EventSeverityInfo)
-	
+
 	// Run initial safety checks
 	if err := e.RunSafetyChecks(ctx); err != nil {
 		e.SetStatus(ExperimentStatusFailed)
 		return err
 	}
-	
+
 	// Start metrics collection
 	if err := e.StartMetricsCollection(ctx); err != nil {
 		e.AddEvent("Setup", fmt.Sprintf("Warning: metrics collection setup failed: %v", err), EventSeverityWarning)
 		// Continue even if metrics fail
 	}
-	
+
 	e.AddEvent("Setup", "Experiment setup completed", EventSeverityInfo)
 	return nil
 }
@@ -212,18 +212,18 @@ func (e *BaseExperiment) Setup(ctx context.Context) error {
 // Cleanup removes any injected failures
 func (e *BaseExperiment) Cleanup(ctx context.Context) error {
 	e.AddEvent("Cleanup", "Starting experiment cleanup", EventSeverityInfo)
-	
+
 	// Stop metrics collection
 	e.StopMetricsCollection()
-	
+
 	// Update result
 	e.Result.EndTime = time.Now()
 	e.Result.Duration = e.Result.EndTime.Sub(e.Result.StartTime)
-	
+
 	if e.Result.Status == ExperimentStatusRunning {
 		e.SetStatus(ExperimentStatusCompleted)
 	}
-	
+
 	e.AddEvent("Cleanup", "Experiment cleanup completed", EventSeverityInfo)
 	return nil
 }
